@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Caumaker/GeoNFT/schema/geonft-metadata.schema.json",
+  "title": "GeoNFT sample certificate metadata",
+  "description": "ERC-721 metadata (name, description, image, attributes) plus a geonft section describing the sample, its location as a GeoJSON Feature, the tests run on it and the files that back it. The token stores the SHA-256 of this document as canonical JSON.",
+  "type": "object",
+  "required": ["name", "description", "geonft"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "description": { "type": "string", "maxLength": 5000 },
+    "image": { "type": "string", "pattern": "^(ipfs|https?|ar)://" },
+    "external_url": { "type": "string", "pattern": "^https?://" },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["trait_type", "value"],
+        "properties": {
+          "trait_type": { "type": "string" },
+          "value": { "type": ["string", "number", "boolean"] },
+          "display_type": { "enum": ["number", "boost_number", "boost_percentage", "date"] }
+        }
+      }
+    },
+    "geonft": {
+      "type": "object",
+      "required": ["version", "sample", "location", "tests", "files"],
+      "properties": {
+        "version": { "const": "1.0" },
+        "sample": {
+          "type": "object",
+          "required": ["id", "locationId", "type"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1, "description": "Issuer's unique id; for AGS4 data LOCA_ID/SAMP_TOP/SAMP_REF/SAMP_TYPE/SAMP_ID" },
+            "locationId": { "type": "string", "minLength": 1 },
+            "type": { "type": "string", "description": "AGS4 SAMP_TYPE code (U, B, D, C...)" },
+            "typeName": { "type": "string" },
+            "top": { "type": "number" },
+            "base": { "type": "number" },
+            "depthUnit": { "const": "m" },
+            "description": { "type": "string" },
+            "collectedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}" },
+            "collectedBy": { "type": "string" }
+          }
+        },
+        "location": {
+          "description": "GeoJSON Feature (RFC 7946, WGS 84 longitude, latitude, elevation). geometry may be null when only projected coordinates are known.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["type", "geometry", "properties"],
+              "properties": {
+                "type": { "const": "Feature" },
+                "geometry": {
+                  "oneOf": [
+                    { "type": "null" },
+                    {
+                      "type": "object",
+                      "required": ["type", "coordinates"],
+                      "properties": {
+                        "type": { "const": "Point" },
+                        "coordinates": { "type": "array", "minItems": 2, "maxItems": 3, "items": { "type": "number" } }
+                      }
+                    }
+                  ]
+                },
+                "properties": { "type": "object", "required": ["id"] }
+              }
+            }
+          ]
+        },
+        "project": { "type": "object" },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["group", "name", "results"],
+            "properties": {
+              "group": { "type": "string" },
+              "name": { "type": "string" },
+              "standard": { "type": "string" },
+              "results": { "type": "object" }
+            }
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "sha256"],
+            "properties": {
+              "name": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "uri": { "type": "string" },
+              "mediaType": { "type": "string" }
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "format": { "type": "string" },
+            "file": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "groups": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}
