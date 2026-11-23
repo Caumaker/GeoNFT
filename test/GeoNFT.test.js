@@ -77,6 +77,29 @@ describe('GeoNFT', () => {
     await expect(nft.connect(lab).revoke(1, 'again')).to.be.revertedWithCustomError(nft, 'CertificateRevoked');
   });
 
+  it('an issuer whose accreditation was removed cannot revoke (stolen key scenario)', async () => {
+    await issue();
+    await nft.revokeRole(ISSUER, lab.address);
+    await expect(nft.connect(lab).revoke(1, 'wipe')).to.be.revertedWithCustomError(nft, 'NotTheIssuer');
+  });
+
+  it('history can be read one revision at a time', async () => {
+    await issue();
+    await nft.connect(lab).revise(1, h('v2'), 'ipfs://v2', 'second');
+    expect(await nft.revisionCount(1)).to.equal(2n);
+    expect((await nft.revisionAt(1, 1)).reason).to.equal('second');
+    await expect(nft.revisionAt(1, 2)).to.be.reverted;
+  });
+
+  it('Issued and CustodyNote come before the Transfer of the same call', async () => {
+    const rc = await (await issue()).wait();
+    const names = rc.logs.map((l) => { try { return nft.interface.parseLog(l).name; } catch (e) { return null; } }).filter(Boolean);
+    expect(names).to.deep.equal(['Issued', 'Transfer']);
+    const rc2 = await (await nft.connect(custodian).transferWithNote(lab.address, 1, 'to lab')).wait();
+    const names2 = rc2.logs.map((l) => { try { return nft.interface.parseLog(l).name; } catch (e) { return null; } }).filter(Boolean);
+    expect(names2).to.deep.equal(['CustodyNote', 'Transfer']);
+  });
+
   it('the admin can revoke any certificate (e.g. an issuer lost its accreditation)', async () => {
     await issue();
     await expect(nft.connect(admin).revoke(1, 'issuer accreditation withdrawn')).to.emit(nft, 'Revoked');

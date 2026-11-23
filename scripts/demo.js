@@ -17,7 +17,7 @@ async function main() {
   console.log(`GeoNFT at ${address}; admin ${admin.address.slice(0, 10)}..., accredited lab ${lab.address.slice(0, 10)}...\n`);
 
   const agsFile = path.join(__dirname, '..', 'examples', 'site-investigation.ags');
-  const certs = fromAgs(fs.readFileSync(agsFile, 'utf8'), agsFile);
+  const { certs } = fromAgs(fs.readFileSync(agsFile), agsFile);
   const docs = {};
   for (const c of certs) {
     await (await nft.connect(lab).issue(siteStore.address, c.sampleId, c.dataHash, `https://example.org/geonft/${c.file}`)).wait();

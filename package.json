@@ -24,7 +24,7 @@
     "drill-core"
   ],
   "engines": {
-    "node": ">=18.17"
+    "node": ">=20"
   },
   "scripts": {
     "compile": "hardhat compile",
@@ -35,7 +35,8 @@
     "deploy": "hardhat run scripts/deploy.js",
     "mint": "hardhat run scripts/mint.js",
     "verify-token": "node tools/verify-token.js",
-    "demo": "hardhat run scripts/demo.js"
+    "demo": "hardhat run scripts/demo.js",
+    "revise": "hardhat run scripts/revise.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",

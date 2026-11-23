@@ -30,6 +30,7 @@ function parseAgs4(text) {
     const cells = splitCsv(line);
     const kind = cells[0];
     if (kind === 'GROUP') {
+      if (groups[cells[1]]) throw new Error(`line ${n + 1}: group ${cells[1]} appears twice`);
       g = { name: cells[1], headings: [], units: {}, types: {}, rows: [] };
       groups[g.name] = g;
     } else if (!g) {
@@ -42,7 +43,8 @@ function parseAgs4(text) {
     } else if (kind === 'DATA') {
       if (cells.length - 1 !== g.headings.length) throw new Error(`line ${n + 1}: ${g.name} row has ${cells.length - 1} values for ${g.headings.length} headings`);
       const row = {};
-      cells.slice(1).forEach((v, i) => { row[g.headings[i]] = v; });
+      cells.slice(1).forEach((v, i) => { row[g.headings[i]] = v.trim(); });
+      Object.defineProperty(row, '_line', { value: n + 1, enumerable: false }); // for messages
       g.rows.push(row);
     } else {
       throw new Error(`line ${n + 1}: unknown row type "${kind}"`);

@@ -68,8 +68,9 @@ contract GeoNFT is ERC721, AccessControl {
         tokenOfSample[key] = tokenId;
         _certificates[tokenId] = Certificate(sampleId, msg.sender, uint64(block.timestamp), false, "");
         _revisions[tokenId].push(Revision(dataHash, uri, uint64(block.timestamp), msg.sender, "issued"));
-        _safeMint(to, tokenId);
+        // the event goes out before _safeMint: a receiving contract's callback cannot log anything ahead of it
         emit Issued(tokenId, msg.sender, sampleId, dataHash, uri);
+        _safeMint(to, tokenId);
     }
 
     /// @notice Records a corrected or extended metadata document (a new lab result, a fixed coordinate).
@@ -87,9 +88,11 @@ contract GeoNFT is ERC721, AccessControl {
     }
 
     /// @notice Withdraws a certificate (contaminated sample, wrong location...). The token and its history remain.
+    /// The issuer can revoke only while still accredited: a stolen key whose role was removed cannot wipe its records.
     function revoke(uint256 tokenId, string calldata reason) external {
         Certificate storage c = _certificate(tokenId);
-        if (c.issuer != msg.sender && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotTheIssuer(tokenId);
+        bool issuerOk = c.issuer == msg.sender && hasRole(ISSUER_ROLE, msg.sender);
+        if (!issuerOk && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotTheIssuer(tokenId);
         if (c.revoked) revert CertificateRevoked(tokenId);
         if (bytes(reason).length == 0) revert EmptyField("reason");
         c.revoked = true;
@@ -102,8 +105,8 @@ contract GeoNFT is ERC721, AccessControl {
     /// "shipped to lab X, seal 4471", "received intact".
     function transferWithNote(address to, uint256 tokenId, string calldata note) external {
         address from = ownerOf(tokenId);
+        emit CustodyNote(tokenId, from, to, note); // before the transfer callback, so custody history stays in order
         safeTransferFrom(from, to, tokenId);
-        emit CustodyNote(tokenId, from, to, note);
     }
 
     // ---------------------------------------------------------------- reading
@@ -118,9 +121,20 @@ contract GeoNFT is ERC721, AccessControl {
         return (c, r[r.length - 1], r.length);
     }
 
+    /// @notice Whole history in one call. For very long histories use revisionCount and revisionAt.
     function revisions(uint256 tokenId) external view returns (Revision[] memory) {
         _certificate(tokenId);
         return _revisions[tokenId];
+    }
+
+    function revisionCount(uint256 tokenId) external view returns (uint256) {
+        _certificate(tokenId);
+        return _revisions[tokenId].length;
+    }
+
+    function revisionAt(uint256 tokenId, uint256 index) external view returns (Revision memory) {
+        _certificate(tokenId);
+        return _revisions[tokenId][index];
     }
 
     /// @notice SHA-256 of the current metadata document.

@@ -6,6 +6,7 @@
 const fs = require('fs');
 const { ethers } = require('ethers');
 const { verifyToken } = require('./lib/verify');
+const { strictParse } = require('./lib/strict-json');
 
 const a = {};
 for (let i = 2; i < process.argv.length; i++) if (process.argv[i].startsWith('--')) a[process.argv[i].slice(2)] = process.argv[++i];
@@ -16,16 +17,17 @@ async function fetchMetadata(uri) {
   if (!/^https?:\/\//.test(url)) throw new Error(`cannot fetch ${uri}: pass --metadata`);
   const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
-  return r.json();
+  return strictParse(await r.text());
 }
 
 (async () => {
   const r = await verifyToken({
     ethers, provider: new ethers.JsonRpcProvider(a.rpc), address: a.contract, tokenId: BigInt(a.token),
-    metadata: a.metadata ? JSON.parse(fs.readFileSync(a.metadata, 'utf8')) : null, fetchMetadata,
+    metadata: a.metadata ? strictParse(fs.readFileSync(a.metadata, 'utf8')) : null, fetchMetadata,
   });
   console.log(`${r.ok ? 'VALID  ' : 'INVALID'} token ${a.token}, sample ${r.sampleId}`);
   for (const p of r.problems) console.log('  - ' + p);
+  for (const n of r.notes) console.log('  note: ' + n);
   console.log(`  issuer ${r.issuer}${r.issuerStillAccredited ? '' : ' (no longer accredited)'}, holder ${r.owner}`);
   for (const h of r.history) console.log(`  rev ${h.revision} ${h.at} ${h.reason} ${h.dataHash.slice(0, 18)}...`);
   process.exit(r.ok ? 0 : 2);

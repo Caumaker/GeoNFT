@@ -4,12 +4,14 @@
 const fs = require('fs');
 const { validate } = require('./lib/validate');
 const { dataHashOf } = require('./lib/canonical');
+const { strictParse } = require('./lib/strict-json');
 
 const files = process.argv.slice(2);
 if (!files.length) { console.error('usage: node tools/validate.js <metadata.json> [...]'); process.exit(1); }
 let ruins = 0;
 for (const f of files) {
-  const md = JSON.parse(fs.readFileSync(f, 'utf8'));
+  let md;
+  try { md = strictParse(fs.readFileSync(f, 'utf8')); } catch (e) { ruins++; console.log(`INVALID ${f}  ${e.message}`); continue; }
   const v = validate(md);
   if (!v.ok) ruins++;
   console.log(`${v.ok ? 'OK     ' : 'INVALID'} ${f}  ${v.ok ? dataHashOf(md) : v.errors.join('; ')}`);
